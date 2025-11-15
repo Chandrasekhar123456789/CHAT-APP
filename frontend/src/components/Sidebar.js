@@ -6,20 +6,20 @@ import { PlusIcon, Bars3Icon } from "@heroicons/react/24/outline";
 export default function Sidebar({ collapsed, setCollapsed }) {
   const [sessions, setSessions] = useState([]);
   const navigate = useNavigate();
-
+  const API = "https://chat-app-kjwu.onrender.com";
   useEffect(() => {
     fetchSessions();
   }, []);
 
   function fetchSessions() {
-    fetch("http://localhost:4000/api/sessions")
+   fetch(`${API}/api/sessions`)
       .then((r) => r.json())
       .then((d) => setSessions(d.sessions || []))
       .catch((e) => console.error(e));
   }
 
   function newChat() {
-    fetch("http://localhost:4000/api/new-chat")
+    fetch(`${API}/api/new-chat`)
       .then((r) => r.json())
       .then((d) => {
         navigate(`/chat/${d.id}`);

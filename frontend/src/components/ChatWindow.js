@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import TableResponse from "./TableResponse";
 import AnswerFeedback from "./AnswerFeedback";
 import ChatMessage from "./ChatMessage";
+import LikeDislikeButtons from "./LikeDislikeButtons";
 
 export default function ChatWindow() {
   const { sessionId } = useParams();
@@ -12,25 +13,33 @@ export default function ChatWindow() {
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
   const bottomRef = useRef(null);
+const API = "https://chat-app-kjwu.onrender.com";
 
+  // ----------------------------------------
+  // Fetch session
+  // ----------------------------------------
   useEffect(() => {
-    if (!sessionId) return;
-    fetchSession();
+    if (sessionId) fetchSession();
   }, [sessionId]);
 
   function fetchSession() {
-    fetch(`http://localhost:4000/api/session/${sessionId}`)
+    fetch(`${API}/api/session/${sessionId}`
+)
       .then((r) => r.json())
       .then((d) => setSession(d.session))
       .catch((e) => console.error(e));
   }
 
+  // ----------------------------------------
+  // Send question
+  // ----------------------------------------
   function send() {
     if (!question.trim()) return;
     setLoading(true);
-    // show typing for 600-900ms for realism
     setTyping(true);
-    fetch(`http://localhost:4000/api/chat/${sessionId}`, {
+
+   fetch(`${API}/api/chat/${sessionId}`
+, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
@@ -43,67 +52,158 @@ export default function ChatWindow() {
           fetchSession();
         }, 700);
       })
-      .catch((e) => { console.error(e); setTyping(false); })
+      .catch((e) => {
+        console.error(e);
+        setTyping(false);
+      })
       .finally(() => setLoading(false));
   }
 
+  // scroll to bottom on new message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [session, typing]);
 
+  // ----------------------------------------
+  // Animations
+  // ----------------------------------------
+  const msgVariants = {
+    hidden: { opacity: 0, y: 8 },
+    visible: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -8 },
+  };
+
+  const typingVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { opacity: 1, scale: 1 },
+  };
+
+  const sendBtnTap = { scale: 0.92 };
+
   return (
-    <div className="card rounded-lg shadow p-4 flex flex-col h-[78vh] max-h-[78vh]">
-      <div className="flex items-center justify-between mb-4">
+    <motion.div
+      className="card rounded-lg shadow p-4 flex flex-col h-[78vh] max-h-[78vh]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+    >
+      {/* Header */}
+      <motion.div
+        className="flex items-center justify-between mb-4"
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <div>
           <div className="font-semibold text-lg">{session?.title || sessionId}</div>
           <div className="text-xs text-[var(--muted)]">{session?.history?.length || 0} messages</div>
         </div>
-      </div>
+      </motion.div>
 
+      {/* Chat Body */}
       <div className="flex-1 overflow-auto space-y-4 mb-4 px-1">
         <AnimatePresence initial={false}>
           {session?.history?.map((m) => (
-            <motion.div key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}>
+            <motion.div
+              key={m.id}
+              variants={msgVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={{ duration: 0.18 }}
+            >
               <ChatMessage message={m} />
-              <div className="mt-2 ml-2">
-                {m.answerText && <div className="text-sm mb-2">{m.answerText}</div>}
-                <TableResponse table={m.table} />
-                <AnswerFeedback sessionId={sessionId} messageId={m.id} feedback={m.feedback} onUpdate={fetchSession} />
-              </div>
+
+              {/* Animated Extras */}
+              <motion.div
+                className="mt-2 ml-2 space-y-2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15 }}
+              >
+                {m.answerText && (
+                  <motion.div
+                    className="text-sm mb-2"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    {m.answerText}
+                  </motion.div>
+                )}
+
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <TableResponse table={m.table} />
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <AnswerFeedback
+                    sessionId={sessionId}
+                    messageId={m.id}
+                    feedback={m.feedback}
+                    onUpdate={fetchSession}
+                  />
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <LikeDislikeButtons />
+                </motion.div>
+              </motion.div>
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {/* typing indicator */}
-        {typing && (
-          <div className="flex items-start gap-3">
-            <div className="mr-3 w-9 h-9 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white font-semibold">B</div>
-            <div className="bubble bg-[rgba(255,255,255,0.03)]">
-              <div className="typing">
-                <div className="dot" />
-                <div className="dot" />
-                <div className="dot" />
+        {/* Typing Indicator */}
+        <AnimatePresence>
+          {typing && (
+            <motion.div
+              className="flex items-start gap-3"
+              variants={typingVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="mr-3 w-9 h-9 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white font-semibold">
+                B
               </div>
-            </div>
-          </div>
-        )}
+              <div className="bubble bg-[rgba(255,255,255,0.03)]">
+                <div className="typing">
+                  <div className="dot" />
+                  <div className="dot" />
+                  <div className="dot" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div ref={bottomRef} />
       </div>
 
+      {/* Input */}
       <div className="flex gap-2 items-center">
-        <input
+        <motion.input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type your question and press Enter"
+          placeholder="Type your question..."
           className="flex-1 rounded-full px-4 py-2 outline-none border border-[rgba(255,255,255,0.03)] bg-[var(--card)]"
+          whileFocus={{ scale: 1.01 }}
+          transition={{ duration: 0.15 }}
         />
-        <button onClick={send} disabled={loading} className="px-4 py-2 rounded-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white shadow-md">
+
+        <motion.button
+          onClick={send}
+          disabled={loading}
+          className="px-4 py-2 rounded-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white shadow-md"
+          whileTap={sendBtnTap}
+        >
           {loading ? "Sending..." : "Send"}
-        </button>
+        </motion.button>
       </div>
-    </div>
+    </motion.div>
   );
 }
-
