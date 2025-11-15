@@ -31,3 +31,4 @@ The frontend expects the backend at http://localhost:4000. The demo implements:
 
 Notes:
 - This is a lightweight starter scaffold satisfying the assignment requirements. You can extend the backend to persist feedback, add better animations, or convert to Vite/CRA fully.
+Published Link:https://chat-app-umber-eight-68.vercel.app/
